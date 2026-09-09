@@ -61,7 +61,10 @@ The loop is five steps:
 2. **Filter** - the objective filters are applied **deterministically in code**
    (`lib/filter.ts`), not by the LLM. Skills, years, location, company background, and
    title are exact constraints, so applying them in code is faster, free, and
-   trustworthy.
+   trustworthy. The matcher is hardened at the LLM seam: discipline words like
+   "frontend"/"backend" are mapped to the right titles/skills even if the model routes
+   them into the skills axis, and skill substring matching is one-directional so a short
+   skill like "AWS" can't satisfy a query for "AWS RDS".
 3. **Score** - `POST /api/search` sends the survivors + rubric to the LLM, which scores
    each 0-100 with a short explanation and `matchedSignals` that quote real fields. Each
    signal is then verified against the profile (`lib/ground.ts`) and any that contradict
@@ -113,7 +116,9 @@ label and carry every measured value; Space Grotesk sets the headlines. The sign
 element is the **fit score as a signal-strength meter**, and grounded `matchedSignals`
 render as **verified chips** - turning the trust guarantee into the visual hero. During a
 refinement the results hold behind a "re-ranking" state so the shown candidates never
-contradict the already-updated filters.
+contradict the already-updated filters. The three-column instrument view (filters, refine
+console, results) is responsive: each column scrolls independently on desktop, and on
+small screens the console collapses into a floating chat button that opens a bottom sheet.
 
 ## Project structure
 
