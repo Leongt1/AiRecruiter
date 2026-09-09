@@ -17,6 +17,10 @@ Rules:
   genuinely objective (skills, years, location, company background, title). Do NOT
   encode subjective preferences ("strong", "impressive") as filters - those belong
   in the rubric.
+- Discipline words (frontend, backend, full-stack, mobile, iOS, Android, DevOps, ML,
+  data, QA) name a role, not a skill. Put them in "titles", or decompose them into
+  concrete skills (e.g. frontend -> React, CSS, TypeScript). Never put a bare
+  discipline word in "skills".
 - Leave an axis unconstrained (empty array or null) rather than inventing a limit
   the recruiter did not ask for. A narrow query should produce narrow filters; a
   vague one should stay broad.
