@@ -33,6 +33,64 @@ function hasSkill(profile: Profile, required: string): boolean {
   );
 }
 
+/**
+ * Discipline words ("frontend", "backend", "devops", ...) name a role, not a literal
+ * skill. The model sometimes routes them into the `skills` axis (e.g. skills:
+ * ["frontend experience"]), where no profile has a matching skill and everyone is
+ * filtered out. So when a required "skill" is really a discipline, we satisfy it by a
+ * matching title (the reliable signal - disciplines appear as titles in the data) OR a
+ * discipline-exclusive skill, instead of requiring a literal skill by that name.
+ */
+const DISCIPLINES: Record<string, { titles: string[]; skills: string[] }> = {
+  frontend: { titles: ["frontend", "front end", "front-end"], skills: ["react", "css", "next.js", "design systems", "accessibility"] },
+  backend: { titles: ["backend", "back end", "back-end"], skills: ["node.js", "django", "celery", "grpc", "kafka"] },
+  fullstack: { titles: ["full stack", "fullstack", "full-stack"], skills: ["mongodb", "graphql"] },
+  mobile: { titles: ["mobile", "ios", "android"], skills: ["swift", "swiftui", "combine", "core data", "kotlin", "jetpack compose", "coroutines"] },
+  ios: { titles: ["ios"], skills: ["swift", "swiftui", "combine", "core data"] },
+  android: { titles: ["android"], skills: ["kotlin", "jetpack compose", "coroutines"] },
+  devops: { titles: ["devops", "dev ops"], skills: ["kubernetes", "ci/cd"] },
+  ml: { titles: ["machine learning"], skills: ["pytorch", "llms", "rag", "vector dbs"] },
+  data: { titles: ["data engineer"], skills: ["spark", "airflow", "dbt", "sql"] },
+  qa: { titles: ["qa", "quality", "automation"], skills: ["selenium", "playwright"] },
+  database: { titles: ["database reliability", "database"], skills: ["monitoring"] },
+};
+
+// Alternate spellings a term can arrive as, mapped to the canonical discipline key.
+const DISCIPLINE_SYNONYMS: Record<string, string> = {
+  frontend: "frontend", "front end": "frontend", "front-end": "frontend",
+  backend: "backend", "back end": "backend", "back-end": "backend",
+  fullstack: "fullstack", "full stack": "fullstack", "full-stack": "fullstack",
+  mobile: "mobile", ios: "ios", android: "android",
+  devops: "devops", "dev ops": "devops",
+  ml: "ml", "machine learning": "ml",
+  data: "data",
+  qa: "qa", "quality assurance": "qa", automation: "qa",
+  database: "database", dba: "database",
+};
+
+// Words that decorate a discipline term but carry no meaning for classification.
+const DISCIPLINE_FILLER = /\b(experience|engineers?|engineering|developers?|development|devs?|skills?|background|expertise|roles?)\b/g;
+
+/** If `term` is really a discipline word, return its mapping; otherwise null. */
+function disciplineFor(term: string): { titles: string[]; skills: string[] } | null {
+  const cleaned = norm(term).replace(DISCIPLINE_FILLER, " ").replace(/\s+/g, " ").trim();
+  const key = DISCIPLINE_SYNONYMS[cleaned] ?? cleaned.split(" ").map((w) => DISCIPLINE_SYNONYMS[w]).find(Boolean);
+  return key ? DISCIPLINES[key] : null;
+}
+
+function matchesDiscipline(profile: Profile, disc: { titles: string[]; skills: string[] }): boolean {
+  const titles = [norm(profile.current_title), ...profile.past_companies.map((c) => norm(c.title))];
+  if (disc.titles.some((t) => titles.some((title) => title.includes(t)))) return true;
+  const owned = new Set(profile.skills.map(norm));
+  return disc.skills.some((s) => owned.has(s));
+}
+
+/** Satisfy a required "skill": as a discipline (title/skills) if it is one, else literally. */
+function matchesRequiredSkill(profile: Profile, required: string): boolean {
+  const disc = disciplineFor(required);
+  return disc ? matchesDiscipline(profile, disc) : hasSkill(profile, required);
+}
+
 function matchesLocation(profile: Profile, locations: string[]): boolean {
   if (locations.length === 0) return true;
   const loc = norm(profile.location);
@@ -79,7 +137,7 @@ export function filterProfiles(filters: Filters): FilterOutcome {
   const { skills, minYearsExperience, maxYearsExperience, locations, companyTypes, titles } =
     filters;
 
-  const okSkills = (p: Profile) => skills.every((s) => hasSkill(p, s));
+  const okSkills = (p: Profile) => skills.every((s) => matchesRequiredSkill(p, s));
   const okYears = (p: Profile) =>
     (minYearsExperience == null || p.years_experience >= minYearsExperience) &&
     (maxYearsExperience == null || p.years_experience <= maxYearsExperience);
