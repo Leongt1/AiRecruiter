@@ -24,12 +24,21 @@ function expand(term: string): string[] {
   return [n, ...(SKILL_ALIASES[n] ?? [])];
 }
 
-/** Does the profile have a skill satisfying `required` (alias- and substring-aware)? */
+/**
+ * Does the profile have a skill satisfying `required` (alias- and substring-aware)?
+ *
+ * The substring check is one-directional: an OWNED skill may contain the WANTED term
+ * ("AWS RDS" satisfies a query for "RDS"), but NOT the reverse. Matching the reverse
+ * direction would let a shorter owned skill satisfy a longer query - e.g. "AWS" would
+ * match "AWS RDS", or "SQL" would match "PostgreSQL" - which is a false positive.
+ * Recruiter shorthand ("rds", "k8s", "postgres") is handled by `SKILL_ALIASES`, not by
+ * loose reverse-substring matching.
+ */
 function hasSkill(profile: Profile, required: string): boolean {
   const wanted = expand(required);
   const owned = profile.skills.map(norm);
   return wanted.some((w) =>
-    owned.some((o) => o === w || (w.length >= 3 && (o.includes(w) || w.includes(o))))
+    owned.some((o) => o === w || (w.length >= 3 && o.includes(w)))
   );
 }
 
