@@ -41,6 +41,18 @@ tried in order if it fails. Override the order with `LLM_PROVIDERS` (e.g.
 Keys are read only on the server and are never sent to the browser or committed -
 `.env.local` is gitignored.
 
+### Run with Docker (optional)
+
+The app ships a Dockerfile (standalone Next.js output) so it runs anywhere Docker does:
+
+```bash
+docker build -t flexiple .
+docker run -p 3000:3000 -e OPENAI_API_KEY=sk-... flexiple
+```
+
+Pass whichever provider key you're using with `-e` (e.g. `-e GEMINI_API_KEY=...`), then open
+http://localhost:3000.
+
 ### Smoke test (optional)
 
 With the dev server running and a key set, verify the LLM pipeline end to end:
